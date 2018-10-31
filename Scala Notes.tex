@@ -1,0 +1,1328 @@
+\documentclass[10pt, a4paper]{report}
+\usepackage{array, xcolor, lipsum, bibentry}
+\usepackage[margin=2cm]{geometry}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage{hyperref}
+\usepackage{listings}
+
+% "define" Scala
+\lstdefinelanguage{scala}{
+  morekeywords={abstract,case,catch,class,def,%
+    do,else,extends,false,final,finally,%
+    for,if,implicit,import,match,mixin,%
+    new,null,object,override,package,%
+    private,protected,requires,return,sealed,%
+    super,this,throw,trait,true,try,%
+    type,val,var,while,with,yield},
+  otherkeywords={=>,<-,<\%,<:,>:,\#,@},
+  sensitive=true,
+  morecomment=[l]{//},
+  morecomment=[n]{/*}{*/},
+  morestring=[b]",
+  morestring=[b]',
+  morestring=[b]"""
+}
+
+
+\title{Scala Specialisation Notes}
+\author{Marjan Mubarok}
+\date{}
+\begin{document}
+\maketitle
+\tableofcontents
+\part{Functional Programming Principles in Scala}
+\chapter{Getting Started and Functions and Evaluation}
+\section{Books}
+Structure and interpretation of computer programs, Scala for the impatient, Oreilly book, scala in depth.
+
+\section{Elements of Programming}
+
+Take leftmost operator, evaluate its operands, apply the operator to the operands. \\ A name is evaluated by replacing it with the right hand side of its definition. The evaluation process stops once it results in a value. 
+
+Definitions can have parameters
+
+\begin{lstlisting}[language=scala]
+def square(x: Double) = x * x
+square: (Double)Double
+
+//Comment
+
+def power(x: DOuble, y: Int): Double = ...
+
+\end{lstlisting}
+
+Int's are 32 but integers, 64 bit floating point numbers, boolean values are true and false.
+
+\section{Evaluation of Function Applications}
+
+Applciations of paramerterized fucntion are evaluated in a similar way as operators. Evaluate all function arguments, from left to right. Replace the function application by the functions right hand side and at the same time replace the formal parameters of the function by the actual arguments. This scehem of expression evaluation is called the substitution model. All evaluation does is reduce an expression to a value. It can be applied to all expression, as long as they have no side effects. It is formalised in lambda calculus which gives the foundation for function programming. It is equivalent to all algorithms. Not every expression reduce to a value in a finite number of steps. 
+
+\section{Call By Name vs Call By Value}
+The interpreter reduces function augments to value before rewriting the function application. One could apply the function to unreduced arguments. The first stragey is know as call by value and the second is known as call by name. They are both equivalent so long as the reduced expression consists of pure functions, both evaluation terminate. Call by value has the advantage that it evaluates every function argument only once. Call by name has the advantage that a function arugment is not evaulated if the corresponsing parameter isunused in the evaluation of the function body.
+
+\section{Evaluation stategies and Termination}
+
+Both strategies reduce to the same expression as long as both evaluations terminate. If termination is not guarnteed however. CBV evaluation of an expression e terminates, then CBN evaluation of e terminates too. The other direction is not true. Scala will normally use call-by-value. It is more effiecent than call by name, better with imperative effects also.\\
+
+Scala lets you force it with call-by-name. See below.
+
+\begin{lstlisting}[language=scala]
+
+def constOne(x: Int, y: => Int) = 1
+
+\end{lstlisting}
+
+\section{Conditional Expressions}
+
+Looks like an if else in Java, but is used for expresisons not statements.
+
+\begin{lstlisting}[language=scala]
+
+def abs(x: Int) = if (x >= 0) x else -x
+
+x >= 0 is a predicate, of type boolean
+
+\end{lstlisting}
+
+
+Note that and and or do no always need their right operand to be evaluated. We say these expression use short circuit evaluation
+
+\section{Value Definitions}
+
+
+The def form is by name its right hand side is evaluated on eavch use. These also a val which is "by-value"
+
+\begin{lstlisting}[language=scala]
+
+val x = 2
+val y = square(x)
+
+\end{lstlisting}
+
+The right hand side of a val definition is evaluated at the point of the deifnition itself. Afterwards the name referes to the value.
+
+\section{Blocks and lexical scope}
+
+Its good function programming style to split up a task into many small functions. Blocks in Scala. They aredefinied by braces. Caontain a squence of definition or expressions, the last element of a block is an expression that defines its value. This return expression can be preceded by auxillary defintions. Blocks are themsleves expressions, a block may appear everywhere an expression can.\\
+
+The defintions inside a block are only visible from within the block. The definitions inside a block shadow defintions of the same neames outside the block.\\
+
+Definitions of outer blocks are visible inside a block unless they are shadowed. \\
+
+In scala semicolons ar the end of lines are in most cases optional. If there are more statments on a line they must be seprated by semi colons. One issue with Scala's semicolon convention is how to write expressions that span several lines.
+
+\begin{lstlisting}[language=scala]
+
+someLongExpression
++ someOtherExpression
+
+//Would be interpreted as two expressions 
+
+someLongExpression;
++ someOtherExpression
+
+\end{lstlisting}
+
+This could be over come in two ways. Use brackets or write the opreator on the first line. Writing the operator on the first line tell the Scala compiler that the expression is not yet finished.
+
+\begin{lstlisting}[language=scala]
+
+(someLongExpression
++ someOtherExpression)
+// --------------------
+someLongExpression + 
+someOtherExpression
+
+\end{lstlisting}
+
+\section{Tail recursion}
+
+If a function calls itself as its last action, the function's stack frame can be reused. This is called \textit{tail recursion}. Tail recursive functions are iterative processes. In general if the last action of a function consists of calling a function (which may be the same) one stack frame would be sufficient for both functions. Such calls are called tail-calls.\\
+
+The use of tail recursion is to avoid very deep recursion chains. In Scala, only directly recursive calls to the current function are optimised.  One can require that a funciton is tail-recursive using a annotations.
+
+\begin{lstlisting}[language=scala]
+
+@tailrec
+def gcd(a: Int, b: Int): Int = ...
+
+\end{lstlisting}
+
+If the annotation is given, and the implementation of gcd were not tail recursive,an error would be issued. This helps avoid stack overflow exceptions. Premature optimisation is the root of all evil. Donald Knuth.
+
+\chapter{Higher Order Functions}
+
+\section{Higher-Order Functions}
+
+Functional languages treat functions as first-class values. This means that, like any other value, a function can be pass as a parameter and retuned as a result. Functions that take other functions as parameters or that return functions as results are called higher order functions.
+
+\section{Function Types}
+
+The type A => B is the type of a function that takes an argument of type A and result a result of type B. So Int is the type of functions that map integers to integers.
+
+\section{Anonymous Functions}
+Passing function as parameters leads to the creation of many small functions. SOmetimes it is tediious to have to define and name thes efunction using def. Comparing to string, we do not need to define a string using def. Instead of 
+
+\begin{lstlisting}[language=scala]
+
+def str = "abc"; println(str)
+
+\end{lstlisting}
+
+We can directly write
+
+\begin{lstlisting}[language=scala]
+
+println("abc")
+
+\end{lstlisting}
+
+because strings exist as literals. Analogously we would like function literals, which let us write a function without giving it a name. These are called anonymous functions.
+
+\subsection{Anonymous Function Syntax}
+
+\begin{lstlisting}[language=scala]
+
+(x: Int) => x * x * x
+
+// Here (x:Int) is the parameter of the function and x * x * x is it's body.
+
+\end{lstlisting}
+
+The ytpe of the parameter can be omitted if it can be inferred by the compiler form the context. If there are multiple parameters they are sparated by commas:
+
+\begin{lstlisting}[language=scala]
+
+(x: Int, y: Int) => x + y
+
+\end{lstlisting}
+
+Anonomous functions are effectively syntactic sugar. Using anonomous functions we can write stuff in a shorter way.
+
+\section{Currying}
+
+Function application associates to the left
+
+\begin{lstlisting}[language=scala]
+
+sum(cube)(1 , 10) == (sum (cube))(1, 10)
+
+\end{lstlisting}
+
+The method of taking multiple parameter funciton and then making them into anonomous functions is currying. Functional types associate to the right.
+
+\section{Functions and Data}
+
+In Scala we create data structures using classes.
+\begin{lstlisting}[language=scala]
+
+class Rational(x: Int, y: Int) {
+	def numer = x
+	def denom = y
+}
+\end{lstlisting}
+
+This definition introduced two entitties: A new type named Rational, a constructor Rational to create elements of this type. Scala keep the name of types and values in different namespaces. SO theres no conflict between the two definitions of Rational.\\ We call the elemets of a class type objects. They are created like:
+\begin{lstlisting}[language=scala]
+
+new Rational(1, 2)
+
+\end{lstlisting}
+
+Can go further and also package functions operatoing on a data abastraction in the data abstractiion itself. Such functions are called methods.
+
+
+\section{Ratinals}
+On the inside of a class the name this represents hte object on which the current method is executed. BEsides require there is also assert. Assert also take a condition and an optional message string as parameters. Like require, a failing assert will also throw an excvpetion. But its a different. AssertionError for assert. IllegalArgumentException for require. This reflects a difference in intent.  Require is used to enforce a precondition on the caller of a function. assert is used to check the code of the function itself.\\
+
+In Scala, a class implicitly introduces a constructor. This one is called primiary constructor of the calss. The primiary constructor take the paramters of the class and executes all statments in the class body.
+
+\section{Evaluations and operators}
+
+Any method with a parameter can be used like an infix operator. It is therefore possible to write. Relaxed Identifiers. Operators can be used as identifiers. This an identifier can be Alphanumeric, Symbolic, the underscore character.\\
+
+The precedence of an operator is determined by its first character.
+
+\chapter{Data and Abstraction}
+
+\section{Class Heierachies}
+
+Abstract classes can contain members which are missing an implementation. No instances of an abstract class can be created with the operator new.
+
+\begin{lstlisting}[language=scala]
+
+abstract class IntSet {
+	def incl(x: Int): IntSet
+	def contains(x: Int): Boolean
+}
+
+\end{lstlisting}
+
+In Scala, any user-defined class extends another class. If no superclass is given, the standard class Object in the Java package java.lang is assumed. The direct or indirect superclass of a class C are called base classes of C. Extended classes imply that the they conforma to the type of the super class. It is also possible to redefine an existing, non abstract definition in a subclass by using override.\\ An objet deintion is the same as a class definition except that it used the key word object. This defines a singleton object named Empty.\\ Dynmic binding. Object-orentated language including scala implement dynamic method dispatch. This means that the code invoked by a method call depends on the runtime type of the object that contains the method.
+
+\section{How Classes are Organised}
+
+Classes and object are organised in packages. This is done by
+
+\begin{lstlisting}[language=scala]
+
+package progfun.examples
+
+object Hello { ... }
+
+\end{lstlisting}
+
+You can then refer to Hello by its fully qualified name.\\
+
+Imports come in several forms
+
+\begin{lstlisting}[language=scala]
+
+import week3.Rational //Imports just Rational
+import week3.Rational //Imports both rational and hello
+import week3.Rational //Imports everything in package week3
+
+\end{lstlisting}
+
+THe first two forms are called named imports
+The last form is called a wildcard import/ You can import from either a package or an object.\\
+
+Some imports are automaticall imported in any Scala program. These are all members of package scala, all members of package java.lang, all members of the singleton object scala.Predef.\\
+
+In Java as well as in Scala, a class can only have one superclass. But if a class has several natural supertypes to hwihc it conforms or from which it want to inhertis code you could use traits. A trait is declared like an abstract class, just with the trait instead of abstract class.
+
+\begin{lstlisting}[language=scala]
+
+trait Planar {
+	def height: Int
+	def width: Int
+	def surface = height * width
+}
+
+\end{lstlisting}
+
+Classes, objects and traits can iherit from at most one class but arbitarily many traits.
+
+\begin{lstlisting}[language=scala]
+
+class Square extends Shape with Planar with Movable
+
+\end{lstlisting}
+
+Traits resemble interfaces in Java, but are more powerful because they can contain fields and concrete methods. ON the other hands traits cannot have (value) parameters, only classes can.\\
+
+The nothing type. Nothing is at the bottom of Scala's type hierachy. It is a subtype of every other type. THere is no value of type Nothing. This is useful as it signals abnormal termination, an element type of empty collections.\\
+
+Scala's Exception handling is similar to Java's.
+\begin{lstlisting}[language=scala]
+
+throw Exc
+
+\end{lstlisting}
+
+aborts evaluation with the exception Exc. The  type of this expression is Nothing.\\
+
+Every reference class type also has null as a value. The type of null is Null. Null is a subtype of every class that inherits from Object; it is incompatible with subtypes of AnyVal.
+
+\begin{lstlisting}[language=scala]
+val x = null // x: Null
+val y: String = null // : String
+val z: Int = null // error: type mismatch
+
+\end{lstlisting}
+
+\section{Polymorphism}
+
+\section{Cons-Lists}
+
+A fundemental data structure in many functional language is the immutable linkedin list. It is constructed from two building blocks: Nil - the empty list, Cons - a cell contained an elements and the remainder of the list.\\ Example class hierachy.
+
+\begin{lstlisting}[language=scala]
+package week4
+
+trait IntList ...
+class Cons(val head: Int, val tail: IntList) extends IntList ...
+class Nil extends IntList ...
+
+\end{lstlisting}
+
+\section{Type parameter}
+
+We can generalise a definiton using a type parameter
+
+\begin{lstlisting}[language=scala]
+package week4
+
+trait List[T]
+class Cons[T](val head: T, val tail: List[T]) extends List[T]
+class Nil[T] extends List[T]
+
+\end{lstlisting}
+
+Type parameers are written in square brackets.
+
+\subsection{Generic Functions}
+
+Like classes, functions can have type parameters. 
+
+\begin{lstlisting}[language=scala]
+def singleton[T](elem: T) = new Cons[T](elem, new Nil[T])
+
+//Can then be written as
+
+singleton[Int](1)
+singleton[Boolean](true)
+
+\end{lstlisting}
+
+Scala compiler can usually deduce the correct type parameters form the value arguments of a functional call. Type parameter do not affect evaluation in Scala. We can assume that all type parameters and type arguments are removed before evaluating the program. This is classed type erasure. Types are relevent for the compiler to perform correctness checks but they are not relevant for the actual execution.\\
+
+Polymorphism means that a function type comes in many forms. In programming this means that hte function can be applied to arguments of many types or the type can have instances of many types. There are two principal forms of polymorphism, subtyping where instances of a subclass can be passed to a base class and generics instances of a function or class are craeted by type parameterisation.
+
+\chapter{Types and Pattern Matching}
+
+A pure object-orientated language is one in which every value is an object. If the language is based on classes this means that hte type of each value is a class. Scalas numeric types and the Boolean types can be implmented liek normal classes.
+
+\section{Functions as Objects}
+
+Functions values are treated as objects in Scala. The function type A arrow B is just an abbreviation for the class scala.Function A,B which is roughly defined as follows
+
+\begin{lstlisting}[language=scala]
+
+package scala
+
+trait Function[A, B] {
+	def apply(x: A): B
+}
+
+\end{lstlisting}
+
+functions are objects with apply methods. 
+
+\begin{lstlisting}[language=scala]
+
+(x: Int) => x * x
+
+\\is expanded to:
+
+{ class AnonFun extends Function1[Int, Int] {
+	def apply(x: Int) = x * x
+	}
+	new AnonFun
+}
+
+or shorter anonymous class syntax:
+
+new Function1[Int, Int] {
+	def apply(x: Int) = x * x
+}
+
+\end{lstlisting}
+
+\section{Functions and Methods}
+
+Note that a method such as 
+
+\begin{lstlisting}[language=scala]
+
+def f(x: Int): Boolean = ...
+
+\end{lstlisting}
+
+is not itself a function value. But if f used in a place where a Function type is expected,  it is converted automatically to the function value.
+
+\begin{lstlisting}[language=scala]
+
+(x: Int) => f(x)
+
+//or expanded
+
+new Function1[Int, Boolean] {
+	def apply(x: Int) = f(x)
+}
+
+//this is called eta expansion
+
+\end{lstlisting}
+
+\section{Subtyping and Generics}
+
+\subsubsection{Type Bounds}
+
+\begin{lstlisting}[language=scala]
+
+S <: T means: S is a subtype of T, and
+S >: T means: S is a super type of T, or T is a subtype of S
+
+can also have mixed bounds
+
+[S >: NonEmpty <: IntSet]
+
+\end{lstlisting}
+
+\subsection{Covariance}
+
+\begin{lstlisting}[language=scala]
+
+List[NonEmpty] <: List[IntSet]
+
+\end{lstlisting}
+
+We call types for which this relationship holds covariant because their subtyping relationship variaes with the type parameter.
+
+\subsection{Arrays}
+
+In scala we used parameteriszed type syntax Array T to refer to the same type of aray. Arrays in Java are covariant. 
+
+\subsection{Liskov Substitution principle}
+
+\begin{lstlisting}[language=scala]
+
+If A <: B, then everything one can to do with a value of type B one should be able to do with a value of type A
+
+\end{lstlisting}
+
+\section{Variance}
+
+A type that accepts mutations of its elements should not be covariabnt. Immutable types can be covariant if some conditions on methods are met.
+
+\begin{lstlisting}[language=scala]
+
+Say C[T] is a paramerterised type A,B are types such that A<:B. In general there are theree possible relationshipds between C[A] and C[B].
+
+C[A] <: C[B] C is covariant
+C[A] >: C[B] C is contravariant
+neither C[A] nor C[B] is a subtype of the other C is nonvariant
+
+\end{lstlisting}
+
+Scala lets you declare the variance of a type by annotating the type parameter:
+
+\begin{lstlisting}[language=scala]
+
+class C[+A] { ... }    C is covariant
+class C[-A] { ... }    C is contravariant
+class C[A]  { ... }    C is nonvariant
+
+\end{lstlisting}
+
+\subsection{Typing rules for functions}
+
+\begin{lstlisting}[language=scala]
+
+Generally we have the follwoing rule for subtyping between function types
+
+If A2 <: A1 and B1 <: B2, then 
+	A1 => B1 <: A2 => B2
+
+\end{lstlisting}
+
+Functions are contravriant in their argument types and covariant in their result type. 
+
+\section{Decomposition}
+
+Type casting is discouraged in Scala.
+
+\section{Pattern Matching}
+
+Allows for decomposition. The task that we are trying to solve is find a general and convenient way to access objects in a extensible class hierarchy.
+
+A case class is similary to a normal class definition, except that it is preceded by the modifier case.
+
+\begin{lstlisting}[language=scala]
+
+trait Expr
+case class Number(n: Int) extends Expr
+case class Sum(e1: Expr, e2: Expr) extends Expr
+
+\end{lstlisting}
+
+Like before this defines a trait Expr, and two concrete subclasses. Number and Sum. It also implcityly define companion object with apply methods.
+
+\begin{lstlisting}[language=scala]
+
+object Number {
+	def apply(n: Int) = new Number(n)
+}
+object Sum {
+	def appl(e1: Expr, e2 Expr) = new Sum(e1, e2)
+}
+
+
+\end{lstlisting}
+
+so you can write Number(1) instead of new Number(1).\\
+
+One way of viewing pattern matching is a generalization of switch from C/Java to class hierachies. It expressed in Scala using the keyword match
+
+\begin{lstlisting}[language=scala]
+
+def eval(e: Expr): Int = e match {
+	case Number(n) => n
+	case Sum(e1, e2) => eval(e1) + eval(e2)
+}
+
+\end{lstlisting}
+
+Rules for match syntax. Match is followed by a sequence of cases. Each case associates and expression expr with a pattern par. A MatchError exception is thrown if no pattern matches the value of the selector.\\
+
+Patterns are constructed from. Constructors, variables, wildcard patterns, constants. Variables always begine with a lowercase letter. The same variable name can only appear once in a pattern. Names of constants begin with a capital letter with the exception of the reserved words null, true, false.
+
+\subsection{Evaluating Match Expression}
+
+An expression of the form
+
+\begin{lstlisting}[language=scala]
+
+e match { case p_1 => e_1 ... case p_n => e_n } 
+
+\end{lstlisting}
+
+ matches in the order in which they are written. The whole match expression is rewirtten to the right hand side of the first case where the pattern matches the selector e. References to pattern variables are replaced by the corresponding parts in the selector.\\ A pattern C p1,...,pn matches means All the values of type C or a subtry that haveb een constructed with arguments matching the patterns p1,...,pn. A variale pattern x matches any value and binds the name of the variable to this value/ A constance pattern c matches values that ar equal to c (in the sense of ==). 
+ 
+ 
+ 
+
+
+\section{Lists}
+
+The list is a fundemental data structure in functional programming there are two important differences between lists and arrays. Lists are immutable, and lists are recursive where arrays are flat. Like arrays, lists are homogenous: the elemetns of a list must all have the same type. The type of a list with elements ot type T is written scala.List[T] or shorter just List[T].\\ All listss are constructed from the empty list Nil and the construction operation ::. x :: xs  gives a new list with the first element x followed by the elemeds of xs.\\ There is the convention that all operators ending in ":" assoiciate to the right.\\
+
+All operations on lists can be expressed in terms of the following three operations. head the first element of the list. tail the list composed of all the elements except the first. isEmpty 'true' if the list is empty, 'false' otherwise.\\
+
+\chapter{Lists}
+
+\section{More Functions on Lists}
+
+\begin{lstlisting}[language=scala]
+xs.length //The number of elements of cs.
+xs.last //The list's last element, exception if xs is empty.
+xs.init //A list consisting of all elements of xs except the last one, exception if xs is empty.
+xs take n //A list consisting of the first n elements of xs, or xs itslef if it is shorter than n
+xs drop n //The rest of the collection after taking n elements
+xs(n) //The element of xs at index n
+xs ++ ys // The list consisting of all elements of xs folowed by all elements of ys
+xs.revers // The list contianing the lements of xs in reversed order
+xs updated (n, x) //The list containing the same elements as xs except at index n where in contains x
+xs indexOf x // The index of the first element in xs equal to x, or -1 if x does not appear in xs
+xs contains x / Same as xs indexOf x >= 0
+
+\end{lstlisting}
+
+\section{Pairs and Tuples}
+
+The SplitAt Function, on lists returns two sublists. the elements up the given index, the elements from that index. The lists are returned in a pair. The pair consisting of x and y is written (x, y) in Scala.
+
+\subsection{Translation of Tuples}
+
+A tuple type (T1,....,T2) is an abbreviation of the parameterised type scala.Tuplen[T1,...,Tn]. A tuple expression (e1,...,en) is equivalent to the function application scala.Tuplen(e1,...,en). A tuple pattern (p1,...,pn) is equivalent to the constructor pattern.
+
+\section{Implicit Parameters}
+
+Say a function take an implcity parameter of type T, the compiler will search an implcit defintion that is marked implicit, has a type compatible with T, is visible at the point of the funciton  call, or is defined in a companion object associated with T. If there is a single (most specific definition it will be taking as actualy argument for the implcit parameter. Otherwise its an error.
+
+\section{Higher-Order List Functions}
+\subsection{Map}
+
+\subsection{Filtering}
+
+Another common operation on listsi isthe selection of all elements satisfying a given condition. There are also variations of Filter.
+
+\begin{lstlisting}[language=scala]
+
+xs filterNot p \\Same as xs filter (x => !p(x)); The list consisting of those elements of xs that do not satisfy the predicate p.
+xs partition p \\Same as (xs filter p, xs filterNot p), but computed in a single traversal of the list xs.
+xs takeWhile p \\The longest prefix of list xs consisting of elements that all satisfy the predicate p
+xs dropWhile p \\The remainder of the list xs after any leading element satisfying p have been removed.
+xs span p \\ Same as (xs takeWhile p, cd dropWhile p) but computed in a single traversal of the list xs.
+
+\end{lstlisting}
+
+\section{Reduction of Lists}
+
+\begin{lstlisting}[language=scala]
+
+def sum(xs: List[Int])    = ( 0 :: xs) reduceLeft ((x, y) => x + y)
+def product(xs :: List[Int]) = (1 :: xs) = reduceLeft ((x, y) => x * y)
+
+\end{lstlisting}
+
+ANother common operation on lists is to combine the elements of a list using a given operator. reduction of lists. ReduceLeft inserts a given binary operator between adjacent elements of a list. 
+
+\begin{lstlisting}[language=scala]
+Instead of ((x, y) => x * y)), one can also write shorter:
+
+(_ * _)
+
+Every _ represents a new parameter , going from left to right. The parameters are defined at the next outer pair of parentheses ( or the whole expression if there are no enclosing parentheses).
+
+So sum and product can also be expressed like this:
+
+def sum(xs: List[Int]) = (0 :: xs) reduceLeft (_ + _)
+def product(xs: List[Int]) = (1 :: xs) reduceLeft (_ * _)
+
+\end{lstlisting}
+
+FoldLeft. The function reduceLeft is defined in terms of a more general function, foldLeft. like reduce left but take an accumulator, z as an addition parameter, which is retuned when foldLeft is called on an empty list.
+
+\begin{lstlisting}[language=scala]
+So sum and product can also be expressed like this:
+
+def sum(xs: List[Int]) = (xs foldLeft 0) (_ + _)
+def product(xs: List[Int]) = (xs foldLeft 1) (_ * _)
+
+\end{lstlisting}
+
+Differences between fold left and fold right are quivalent if the operators are associateive and commutative. Though there may be a difference in efficiency.  
+
+\section{Reasoning about Concat}
+
+ Natural Induction. To show a property P(n) for all the integer n > b. Show that we have P(b), for all integers n>b show the induction step. if one has P(n), then one also has P(n+1).
+ 
+ Pure functional progams don't have side effects; so that a term is equivalent to the term to which it reduces. this principle is called referential transparency.
+ 
+ \subsection{Structurial Induction}
+ 
+ This is analagoius to natural induction. To prove a property P(xs) for all lists xs. Show that P(Nil) holds (base case). For a lists xs and some element x, show the induction step. if P(xs) holds, then P(x :: xs) also holds. Instead of x :: xs, there is
+
+\section{A Larger Equatorial Proof on Lists}
+
+\chapter{Collections}
+
+\section{Other collections}
+
+Lists are linear. Access ot the first element is much faster than access to the middle or end of a list. The Scala library also defines an alternative sequence implmentation, vector. It is more evenly balanced access pattern than List. It has log32N access complexity. They are good for bulk operations and coinced with the cache line of processors.
+
+Vectors are created analogously to lists:
+
+They support the same operations as lists with the exception of ::
+
+\begin{lstlisting}[language=scala]
+x +: xs - Create a new vector with leading element x, followed by all elements xs
+xs :+ c - Create a new vector with trailing element x, preceded by all elements of xs.
+: always points to the sequence.
+
+\end{lstlisting}
+
+A common base class of List and Vecotor is Seq, the class of all sequences. Seq itself is a subclass of Iterable.\\
+
+String and Arrays support the same operations as Seq and can implicitly be converted to sequences where needed. They cannont be converted to sequences where needed.\\ 
+
+Another simple kind of sequence is the range. It represents a sequence of evenly spaced integers. It has three opreators. to (inclusive), until (exclusive), by (to determine step value):. Ranges represented as single objects with three fields: lower bound, upper bounds, step value.\\
+
+
+\begin{lstlisting}[language=scala]
+//Some sequence operations.
+
+xs exists p - true if there is an element of x of xs such that p(x) holds, false otherwise.
+xs forall p - true if p(x) holds for all elements x of xs, false otherwise
+xs zip ys   - A sequence of pairs drawn from corresponding elements of sequences xs and ys
+xs zip ys   - Splits a sequence of pairs xs into two sequences consisting of the first, respectively second halves of all pairs.
+xs flatMap d - Applies collection-valued function f to all elements of xs and concatenates the results
+xs sum      - The sum of all elements of this numeric collectoin
+xs product  - The product of all elements of this collection (an Ordering must exist)
+xs min     - The minimum of all elments ofd this collectoin.
+
+
+\end{lstlisting}
+
+
+\section{Combinatorial Search and For-Expressions}
+
+We can extend the usage of higher order functions on sequences to many calculations which are usually expressed using nested loops.\\ Higher order functions such as map, flatMap or filter provide powerful constructs for manipulating lists. But sometimes the level of abstraction required by these functions make the program difficult to understand.  In this case, Scala's for expression notation can help.\\ The for-expression is similar to loops in imperative language, except that it builds a list of the result of all interations.
+
+\subsection{Syntax of For}
+
+A for-expression is of the form
+
+\begin{lstlisting}[language=scala]
+for ( s ) yield e
+\end{lstlisting}
+
+where s is a sequence of genertaors and filters, and e is an expression whose value is retuned by an iteration. A generator is of the form p <- e, where p is a pattern and e an expression whose value is a collection. A filter is of the form if f where f is a boolean expression. The sequence must start with a generator. If there are several generators in the sequence, the las generators vary faster than the first.\\
+
+Instead of ( s ), braces s can also be used, and then the sequence of generators and filters can be written on multiple lines without requiring semicolons.
+
+\section{Combinatorial Search Example}
+
+\subsection*{Sets}
+
+Sets are another basic abstraction in the Scala collections. They are written analogously to a sequence: 
+
+\begin{lstlisting}[language=scala]
+	val fruit = Set("appple", "banana", "pear")
+	val s = (1 to 6).toSet
+\end{lstlisting}
+
+Most operation on sequences are also available on sets: The principle differences between sets and sequences are. Sets are unordered, the elements of a set do not have a predefined order in which they appear in the set. sets do not have duplicate elements. The fundemental operation on a set is contains.
+
+\section{Maps}
+
+Another collection type is the map. A map of type Map Key,Value is a data structure that associates keys of type key with values of type Value. maps extend iterables of key/value pairs. The syntac key -> value is just an alternative way to write the pair (key, value).\\ Maps are also functions because they extend the function type key => value. So maps can be used everywhere functions can.\\
+
+The option type is defined as:
+
+\begin{lstlisting}[language=scala]
+	trait Option[+A]
+	case class Some[+A](value : A) extends Option[A]
+	object None extends Option[Nothing]
+\end{lstlisting}
+
+The expression map get key returns. None if map does not contain the given key, Some(x) if map associates the given key with the value x. Since options are defined as case classes, the can be decomposed using pattern matching. 
+
+\subsection{Default Values}
+
+So far, maps were partial functions: Applying a map to a key value in map(key) could lead to an exception, if they key was no stoted in the map. There is an operation withDefaultValue that turns a map into a total function.
+
+
+\section{Putting the Pieces Together}
+
+\section{Conclusion}
+
+\subsection{Traits of Functional Programming}
+
+Functional programming provides a coherent set of notation and methods based on. Higher-order functoins, case classes and pattern matching, immutable collections, absence of mutable state, flexible evaluation strategies: strict vs. by name. A different way of thinking about programs.
+
+\subsection*{Useful resources}
+
+Scala cheat sheet, Twitters Scala School, Scala Excercises by 47 degree, programming in scala, other scala books, the scala website
+
+\part{Functional Programming Design in Scala}
+\chapter{For Expressions and Monads}
+
+\section{Recap: Functions and Pattern Matching}
+
+Functions Are Objects. In Scala, every concrete type is the type of some class or trait. The function type is no exception. A type like 
+
+\begin{lstlisting}[language=scala]
+	JBinding => String
+\end{lstlisting}
+
+is just a shorthand for
+
+\begin{lstlisting}[language=scala]
+	scala.Function[JBinding, String]
+\end{lstlisting}
+
+where scala.Functional is a trait and JBinding and String are its type arguments. One nice aspect of functions being traits is that we can subclass the function type. For instance, maps are functions form keys to values:
+
+\begin{lstlisting}[language=scala]
+	trait Map[Key, Value] extends (Key => Value) ...
+\end{lstlisting}
+
+Sequences are funtions form Int indices to values:
+
+\begin{lstlisting}[language=scala]
+	trait Seq[Elem] extends Int => Elem
+\end{lstlisting}
+
+Thats why we can write
+ 
+\begin{lstlisting}[language=scala]
+	elems(i)
+\end{lstlisting}
+
+for sequence (and array) indexing.
+
+\subsection{Partial Matches}
+They can also test if functions are defined for a given value.
+
+\begin{lstlisting}[language=scala]
+	trait PartialFunction[-A, +R] extends Function1[-A, +R] {
+		def apply(x: A): R
+		def isDefinedAt(x: A): R
+	}
+\end{lstlisting}
+
+
+\section{Recap: Collections}
+
+\begin{lstlisting}[language=scala]
+
+	for {
+		i <- 1 until n
+		j <- 1 until i
+		if is Prime(i + j)
+		} yield (i, j)
+
+\end{lstlisting}
+
+\subsection{Translation of For}
+The scala compiler translates for-expressions in terms of map, flatMap and a lazy variant of filter.
+
+\begin{lstlisting}[language=scala]
+A simple for-expression
+	
+	for (x <- e1) yield e2
+
+is translated to
+
+	e1.map(x => e2)
+	
+A for-expression
+	
+	for (x <- e1 if f; s) yield e2
+	
+where f is a filter and s is a (potentially empty) sequence of generators and filters, is translated to
+
+	for (x <- e1.withFilter(x => f); s) yield e2
+
+\end{lstlisting}
+
+You can thinkg of withFilter as a variant of filter that does not produce an intermediate list, but instead filters the following map or flatMap function application.
+
+\begin{lstlisting}[language=scala]
+	for (x <- e1; y <- e2; s) yield e3
+	
+where s is a (potentially empty) sequence of generators and filters, is translated into
+
+	e1.flatMap(x => for (y <- e2; s) yield e3)
+
+\end{lstlisting}
+
+\section{Queries with For}
+The for notation is essentially equivalent to the common operatrions of query languages for databases.
+
+\begin{lstlisting}[language=scala]
+	case class Book(title: String, authors: List[String])
+\end{lstlisting}
+
+to find he titles of books whose authors name is Bird
+
+\begin{lstlisting}[language=scala]
+	for (b <- books; a <- b.authors if a startsWith "Bird,")
+	yield b.title
+\end{lstlisting}
+
+To find all the books which have the word "Program" in the title:
+
+\begin{lstlisting}[language=scala]
+	for (b <- books if b.title indexOf "Program" >= 0)
+	yield b.title
+\end{lstlisting}
+
+This can be modified using the distinct querey. The translation of for is not limited to lists or sequqnces, or even collectoins; It is based solely on the presence of the methods map, flatMap and withFilter. This let you use the for syntax for your own types as well - you must only dfine map, flatMap and withFilter for these types. There are may types for which this useful: arrays, iterators, databases, XML data, optional values, parsers, etc.
+
+\section{Translation of For}
+
+The syntax of for is closely related to the higher-order functions map, flatMap and filter. The scala compiler expresses for-expression in terms of map, flatMap and a lazy variant of filter. You can think of withFilter as a variant of filter that does not produce and intermediate list, but instead filters the following map or flatMap function application.\\ As long as the client interface to the database defines the methods map, flatMap and withFilter, we can use the syntax for querying the database. This is the basis of the Scala data base connetion frameworks ScalaQuery and Slick. Simmilar ideas underly Microsoft's LINQ.
+
+\section{Functional Random Generators}
+
+\subsection*{Random Values} 
+
+How to define random values. Define a trait Generator T that generates random value of type T:
+
+\begin{lstlisting}[language=scala]
+	trait Generator[+T] {
+		def generate: T
+	}
+\end{lstlisting}
+
+Some instances:
+
+\begin{lstlisting}[language=scala]
+	val integers = new Generator[Int] {
+		val rand = new java.util.Random
+		def generate = rand.nextInt()
+	}
+\end{lstlisting}
+
+Application: Random Testing
+
+\begin{lstlisting}[language=scala]
+	//Using generators, we can write a randome test function
+	def test[T](g : Generator[T], numTimes: Int = 100)
+			(test: T => Boolean): Unit = {
+		for (i <- 0 until numTimes) {
+			val value = g.generate
+			assert(test(value), "test failed for "+values)
+		}
+		println("passed "+numTimes+" tests")
+	}	
+	
+	
+\end{lstlisting}
+
+Instead of writing tests, write properties that are assumed to hold. This idea is implemented in the ScalaCheck tool
+
+\begin{lstlisting}[language=scala]
+	forAll { (l1: List[Int], 12: List[Int]) =>
+		l1.size + l2.size == (l1 ++ l1).size
+	}
+\end{lstlisting}
+
+It can beused either stand-alone or as part of ScalaTest
+
+\section{Monads}
+
+A monad M is a parametric type M[T] with two operations, flatMap and unit, that have to satisfy some laws.
+
+\begin{lstlisting}[language=scala]
+	trait M[T] {
+		def flatMap[U](f: T => M[U]): M[U]
+	}
+	
+	def unit[T](x: T): M[T]
+\end{lstlisting}
+
+In the literatrue, flatMap is more commonly called bind.\\
+
+\subsection{Monads and map}
+ map can be defined for every monad as acombination of flatMap and unit
+
+\begin{lstlisting}[language=scala]
+	m map f == m flatMap (x => unit(f(x)))
+			== m flatMap (f andThen unit)
+\end{lstlisting}
+
+To qualify as a monad, a type has to satisfy three laws. Associativity:
+\begin{lstlisting}[language=scala]
+	m flatMap f flatMap g == m flatMap (x => f(x) flatMap g)
+\end{lstlisting}
+
+Left unit:
+\begin{lstlisting}[language=scala]
+	unit(x) flatMap f == f(x)
+\end{lstlisting}
+
+Right unit:
+\begin{lstlisting}[language=scala]
+	m flatMap unit == m
+\end{lstlisting}
+
+\subsection{Try}
+
+Try resembles Option, but instead of som/None there is a Success case with a value and a Failure case that contains an exception:
+
+\begin{lstlisting}[language=scala]
+	abstract class Try[+T]
+	case class Sucess[T](x: T) extends Try[T]
+	case class Failure(ex: Exception) extends Try[Nothing]
+\end{lstlisting}
+
+Try is used to pass reaults of computations that can fail with an exception between threads and computers.\\
+
+An expression composed from 'try', 'map', 'flatMap' will never throw a non-fatal exception. This is called hte bullet proof principle.\\
+
+To conclude we have seen that for-expressions are useful not only for collections. Many other types also define map,flatMap and withfilter operations and with them for-expressions. Example: Generator, Option, Try. Many of the types defining flatMap are monads. if they also define withFilter, they are called "monads with zero"). The three monad laws give useful guidance in the design of library APIs.
+
+
+\chapter{Lazy Evaluation}
+
+\section{Structural induction on Trees}
+Structural induction is no limited to lists; it applies to any tree structure. The general induction principle is the following: To prove a property P(t) for all trees t of a certain type. Show that P(1) holds for all leaves 1 of a tree, for each type of internal node t with subtrees s1,...,sn show that P(s1) and ... and P(Sn) implies P(t).
+
+\section{Streams}
+Streams are like lists but their tail is only evaluated on demand. Streams are defined from a constant Stream.empty and a constructor Steam.cons.
+
+\begin{lstlisting}[language=scala]
+For instance
+
+	val  xs = Stream.cons(1, Stream.cons(2, Stream.empty))
+
+\end{lstlisting}
+
+They cna also be defined like the other collectoins by using the object Stream as a factory.
+
+\begin{lstlisting}[language=scala]
+	Stream(1, 2, 3)
+\end{lstlisting}
+
+The toStream method on a collection will turn the collection into a stream:
+
+\begin{lstlisting}[language=scala]
+	(1 to 1000).toStream > res0: Stream[Int] = Stream(1, ?)
+\end{lstlisting}
+
+Streams supports almost all methods of List. There is one major exception is ::. x :: xs == Stream.cons(x, xs). \#:: can beused in expressions as well as patterns.
+
+\subsection{Steam Ranges}
+
+Lets try to write a function that returns (lo until hi).toStream directly:
+
+\begin{lstlisting}[language=scala]
+	def streamRange(lo: Int, hi: Int): Stream[Int] =
+		if (lo >= hi) Steam,empty
+		else Stream.cons(lo, streamRange(lo + , hi))
+\end{lstlisting}
+
+Compare to the same function that produces a list:
+
+\begin{lstlisting}[language=scala]
+	def listRange(lo: Int, hi: Int): List[Int] = 
+		if (lo >= hi) Nil
+		else lo :: listRange(lo + 1, hi)
+\end{lstlisting}
+
+\section{Lazy Evaluation}
+
+The proposed implementation suffers from a serious potential performance problem: If tail is called several times the, corresponding stream will be recomputed each time. This problem can be avoided by stroing the result of the first evaluation of tail and re-using the stored result instead of recomputing tail. This optimisation is sound, since in a purely functional language an expression produces the same result each time it is evaluated.\\
+
+This is called lazy evaluation (as opposed to by-name evaluation in the case where everything is recomputed, and strict evaluation for normal parameters and val definition.)\\
+
+Haskell is a function programming lanague that uses lazy evaluation by default. Scala use strict evaluation by default, but allows lazy evaluation of value definition with the lazy val form:
+
+\begin{lstlisting}[language=scala]
+	lazy val x = expr
+\end{lstlisting}
+
+
+\section{Computing with Infinite Sequences}
+
+Lazyness allows for dealing with infinite sequences. 
+
+\begin{lstlisting}[language=scala]
+	//Stream of all integers starting from a given number:
+	def from(n: Int): Stream[Int] = n #:: from(n + 1)
+\end{lstlisting}
+
+The stream of all natural numbers.
+
+\begin{lstlisting}[language=scala]
+	val nats = from(0)
+\end{lstlisting}
+
+The stream of all multiples of 4:
+
+\begin{lstlisting}[language=scala]
+	nats map (_ * 4)
+\end{lstlisting}
+
+\section{The water pouring problem}
+Good principles for functional programming design, name everything you can, put operations into natural scopes. Keep degrees of freedom for future refinements.
+
+\chapter{Functions and State}
+
+\section{Functions and State}
+
+When programs are side effect free the concept of time wasn't important. For all prgrams that terminate, any sequence of actions would have given the same results. this was also reflected in the substitution model of computation.\\
+
+\subsection{Stateful objects} One normally describes the world as a set of object, some which have state that changes over the course of time. An object has a state if its behaviour is influenced by it history.\\
+
+\subsection{Implementation of State}
+
+Every form of mutable state is constructed from variables. A variable definition is writter like value definition, but with the keywoprd var in place of val:
+
+\begin{lstlisting}[language=scala]
+	var x:String = "abc"
+	var count = 111
+\end{lstlisting}
+
+Just like a value defintion, a variable definition associates a value with a name. Hoevery in this case the association can be changed later through an assignment, like Java:\\
+
+In practive , objets with state are usually represented by objects that have some variable members.
+
+\begin{lstlisting}[language=scala]
+	class BankAccount {
+		private var balance = 0
+		def deposit(amount: Int): Unit = {
+			if (amount > 0) balance = balance + amount
+		}
+		def withdraw(amount: Int): Int =
+			if (0 < amount && amount <= balance) {
+				balance = balance - amount
+				balance
+				} else throw new Error("insufficient funds")
+\end{lstlisting}
+
+\section{Identity and Change}
+
+Once assignment has been introduced referential transparancy is lost.
+
+\subsection{Operational Equivalance}
+
+The precise meaning of "being the same" is defined by the property of operational equivalence. Informally this property is stated as follows. Suppose we have two definition x and y. c and y are operationally equivalent if no possible test can distinguish between them.\\ This can be tested by executing the definitions followed by an aribitary sequence f of operations that involves x and y, observing the possible outcomes.\\ Then execute the definitions with another sequence S' obtained by renameing al occurences of y by x in S.\\ If the results are different then the expresion x and y are certainly different.\\ However if every possible pairs of sequences (S, S') produces the same result , then x and y are the same.\\ The substitution model stops being valid once we add assignment to a vlaue.
+
+\section{Loops}
+
+Variables are enough to model all imperative programs.
+
+\begin{lstlisting}[language=scala]
+	def WHILE(condition: => Boolean)(command: => Unit): Unit =
+		if (condition) {
+			command
+			WHILE(condition)(command)
+		}
+		else ()
+\end{lstlisting}
+
+\subsection{For-Loops}
+\begin{lstlisting}[language=scala]
+	for (i <- 1 until 3) { System.out.print(i + " ") }
+\end{lstlisting}
+
+For loops translate similarly to for-expressions, but using the foreach combinator instead of map and flatMap. foreach is defined on collections with elements of type T as follows:
+
+\section{Extended Example: Discrete Event Simulation}
+
+\section{Discrete Event Simulation: API and Usage}
+A discrete event simulator performs actions, specified by the user at a given moment. An action is a function that doesn't take any parameters and which returns Unit:
+
+\begin{lstlisting}[language=scala]
+	type Action = () => Unit
+\end{lstlisting}
+
+The time is simulated; it has nothing to with the actual time.
+
+\subsection*{Simulation Trait}
+
+A concrete simulation happens inside an object that inherits from the trait Simulation, which has the following signature.
+
+\begin{lstlisting}[language=scala]
+	trait Simulatoin {
+		def currentTime: Int = ???
+		def afterDelay(delay: Int)(block: => Unit): Unit = ???
+		def run(): Unit = ???
+		}
+\end{lstlisting}
+Here, curentTime returns the current simulated time in the form of an integer. afterDelay registers an action to perform after a certain delay (relative to th e current time, currentTime) run performs the simulation until there are no more actions waiting.
+
+
+\section{Discrete Event Simulation: Implementation and Test}
+
+\subsection{Summary}
+
+State and assignments make out mental model of computation more complicated. in particular, we lose referential transparancy. On the other hand, assignments allow us to formulate certain programs in an elegant way.
+
+
+
+\chapter{Timely Effects}
+\section{Imperative Event Handling: The observer pattern}
+Commonly used when views need to react to changes in a model. Variants are also called publish/subscrube and model/view/contraller.
+
+\subsection{Good}
+
+Decouples views from state, allowes to have a varying number of views of a given state. SImple to setup.
+
+\subsection{Observer Pattern, The Bad}
+
+Forces imperative style, since handlers are Unit-typed. Many moving parts that need to be co-ordinated. Concurrency makes things more complicated. Views are stil tightly bound to one state; view update happens immediately. one third of the code in Adobe's desktop applicatoins is devoted to even handling. Half the bugs are found in this code.
+
+\section{Functional Reactive Programming}
+
+Reactive programming is about reacting to squences of events that happen in time. Functional view: Aggregate an event into a signal. A signal is a value that changes over time. It is represented as a function from time to the value domain. Instead of propagating updates to mutable state, we define new signals in terms of existing ones. 
+
+\subsection{Fundemetal Signal Operations}
+
+There are two fundemental operations over signals.
+\begin{list}{•}{•}
+\item Obtain the value of the signal at the current time. 
+\item Define a signal in terms of other signals.
+
+\end{list}
+
+We can use a Var. Our library also defines a subclass Var of Signal for signals that can be changed. var provides and "update" operation, which allows to redefine the value of a signal from the current time on.\\
+
+In Scala, calls to update can be written as assignments. For instance, for an array arr. arr(i) = 0 is translated to arr.update(i, 0) which calls an update method which can be through of as follows. \\
+
+Generallu and indexed assignment is like f() = E is translated to f.update(E1,..E). This workds also if n=0: f()=E is shorthand for f.update(E). Hence sig.update(5) can abbreviated to sig() = 5.
+
+\subsubsection{Signals and Variables}ddddddddddddd
+
+Signals of type var look a bit like mutable variables, where sig() is dreferencing , and sig() = newValue is update. But there is a crucial difference: We can map over signals, which gives us a relation between two signals that is maintained automatically, at all furture points in time. No such mechanism exists for mutable variables; we have to propagate all update manually.
+
+\section{A Simple FRP Implementation}
+\section{Latency as an Effect 1}
+Uses callback type.
+
+
+\section{Latency as an Effect 2}
+
+Future T. A monad that handles exceptions and latency. An object is a closure with multple methods. A closure is an obejct with a single method.
+
+\section{Combinators on Futures 1}
+
+
+
+\section{Combinators on Futures 2}
+\section{Composing Futures 1}
+\section{Implementation of flatMap on Future}
+\section{Composing Futures}
+\section{Conclusion}
+
+
+\part{Parallel programming}
+\chapter{Parallel programming}
+\section{Introduction to Parallel Computing}
+\section{Parellism on the JVM 1}
+\section{Paralellism on the JVM 2}
+\section{Running comput  ations in Paralell}
+\section{Monte Carlo Method to Estimate Pi}
+\section{First-Class Tasks}
+\section{How Fast are Parallel Programs}
+\section{Benchmarking Paralell Programs}
+
+\chapter{Basic Task Parallel Algorithms}
+\section{Paralell Sorting}
+\section{Data Operations and Parallel Mapping}
+\section{Parallel Fold (Reduce) Operation}
+\section{Associativity 1}
+\section{Asspcoatovoty 2}
+\section{Paralell Scan (Prefix Sum) Operation}
+
+
+\chapter{Data Parallelism}
+
+\section{Data-Paralel Programming}
+\section{Date-Parallel Operations 1}
+\section{Data-Parallel Operatoins 2}
+\section{Scala Parallel Collections}
+\section{Splitters and Combiners}
+
+\chapter{Data Structures for Parallel Computing}
+
+\section{Implmenting Combiners}
+\section{Parallel Two-Phase construction}
+\section{Cpmc-tree Data Structure}
+\section{Amortized, Constant-time Append Operation}
+\section{Conc-Tree combiners}
+
+
+
+\part{Big Data Analysis with Scala and Spark}
+\chapter{Getting Started + Spark Basics}
+
+\section{Introoduction}
+
+The course is about distrubuted parellsim in Spark. Ectending functional abstractions like functional lsits over large clusters. Analysing large data sets.
+
+\subsection{•}
+If your dataset ever gets too large to fit into memory
+
+\subsection{Why spark}
+APIs modeled after Scala collections. Look like functional lists! 
+
+\section{Data-Paralell to Distributed Data-Parallel}
+\section{Latency}
+\section{RDDs, Spark's Distributed Collection}
+\section{RDDs Transformation and Actions}
+\section{Evaluation in Spark: Unlike Scala Collections}
+\section{Cluster Topology Matters}
+
+
+\chapter{Reduction Operations \& Distributed Key-Value Pairs}
+
+\section{Reduction Operations}
+\section{Pair RDDs}
+\section{Transformations and Actions on Pair RDDs}
+\section{Joins}
+
+\chapter{Partitioning and Shuffling}
+
+\section{Shuffling: What it is and why its important}
+\section{Partitioning}
+\section{Optimising with parapmeters}
+\section{Wide vs Narrow Dependencies}
+
+\chapter{Structured data: SQL, Dataframes,and Datasets}
+
+\section{Structured vs Unstructed data}
+\section{Spark SQL}
+\section{Dataframes 1}
+\section{Dataframs 2}
+\section{Datasets}
+
+\part{Functional Programming in Scala Capstone}
+
+\end{document}
